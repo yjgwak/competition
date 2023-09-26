@@ -9,7 +9,7 @@ from transformers import (
 
 
 class DeBERTaClassifier(L.LightningModule):
-    def __init__(self, model_name, num_labels, learning_rate, num_epochs, num_batch):
+    def __init__(self, model_name, num_labels, learning_rate, num_epochs, num_batch, freeze_backbone=False):
         super(DeBERTaClassifier, self).__init__()
         try:
             self.model = AutoModelForSequenceClassification.from_pretrained(model_name)
@@ -17,6 +17,7 @@ class DeBERTaClassifier(L.LightningModule):
             self.model = AutoModelForSequenceClassification.from_pretrained(
                 model_name, from_tf=True
             )
+        self.model.requires_grad_(not freeze_backbone)
         self.classifier = torch.nn.Linear(len(self.model.config.id2label), num_labels)
         self.loss = torch.nn.CrossEntropyLoss()
         self.learning_rate = learning_rate
@@ -48,7 +49,7 @@ class DeBERTaClassifier(L.LightningModule):
         return torch.nn.functional.softmax(outputs)
 
     def configure_optimizers(self):
-        optimizer = AdamW(self.model.parameters(), lr=self.learning_rate)
+        optimizer = AdamW(self.parameters(), lr=self.learning_rate)
         scheduler = get_linear_schedule_with_warmup(
             optimizer,
             num_warmup_steps=0,
